@@ -1,0 +1,3 @@
+[submodule "floppaplate"]
+	path = floppaplate
+	url = https://github.com/gosher-studios/floppaplate

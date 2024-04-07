@@ -1,0 +1,4 @@
+stats_dir = "/mnt/meow/floppav4/world/stats"
+refresh_interval = 100
+players = ["366e0536-2bf7-45cb-927f-8811e5cb9384", "9d095e87-d20d-439e-9273-8b796590e8ab", "99ea72aa-c741-40b5-9c15-cd03c384c42f", "5ca3924d-f092-4f75-8e75-77432cb61728", 
+"27646d32-d2af-459b-8a4d-0315155d71fc"]

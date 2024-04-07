@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>floppa stats</title>
+    <link rel="stylesheet" href="/static/main.css" />
+    <link
+      href="https://api.fontshare.com/v2/css?f[]=clash-display@600&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link href="https://cdn.jsdelivr.net/gh/eliyantosarage/font-awesome-pro@main/fontawesome-pro-6.5.1-web/css/all.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-bg text-accent font-mono p-4">
+		<div class="flex items-end space-x-1 w-full pb-2 border-grey border-b">
+      <h1 class="text-white font-display text-6xl flex-1">Floppa Stats</h1>
+      <a href="https://github.com/gosher-studios/floppa-stats" target="_blank"><i class="fa-brands fa-github"></i></a>
+      <p>v{{ ver }}</p>
+    </div>
+    <div class="flex flex-wrap">
+      {% for (uuid, player) in players %}
+        <div class="bg-fg p-2 mt-2 md:mr-2 w-full md:w-72 transition-shadow hover:shadow-2xl">
+          <p class="text-white font-bold text-3xl"><img src="https://mc-heads.net/head/{{ uuid }}" class="w-12 mr-2 inline transition-transform hover:scale-110" />{{ player.username }}</p>
+          <p><i class="fa-solid fa-pickaxe"></i> mined: <span class="text-white">{{ player.mined }}</span></p>
+          <p><i class="fa-solid fa-route"></i> distance: <span class="text-white">{{ player.distance }}km</span></p>
+          <p><i class="fa-solid fa-up"></i> jumps: <span class="text-white">{{ player.jumps }}</span></p>
+          <p><i class="fa-solid fa-sword"></i> kills: <span class="text-white">{{ player.kills }}</span></p>
+          <p><i class="fa-solid fa-hammer"></i> crafed: <span class="text-white">{{ player.crafted }}</span></p>
+          <p><i class="fa-solid fa-money-bill-transfer"></i> trades: <span class="text-white">{{ player.trades }}</span></p>
+          <p><i class="fa-solid fa-skull"></i> deaths: <span class="text-white">{{ player.deaths }}</span></p>
+        </div>
+      {% endfor %}
+    </div>
+	</body>
+</html>
