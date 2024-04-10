@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fs::{self, File};
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::time::{interval, Duration};
 use tokio::sync::RwLock;
@@ -10,6 +11,7 @@ use axum::routing::get;
 use axum::extract::State;
 use askama::Template;
 use tower_http::services::ServeDir;
+use reqwest::Client;
 use tracing::{error, info, info_span, Instrument};
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -23,10 +25,11 @@ pub type Result<T = (), E = Box<dyn std::error::Error>> = std::result::Result<T,
 #[tokio::main]
 async fn main() -> Result {
   tracing_subscriber::registry()
+    .with(console_subscriber::spawn())
     .with(
       tracing_subscriber::fmt::layer()
-        .with_span_events(FmtSpan::CLOSE)
-        .with_filter(LevelFilter::INFO),
+        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+        .with_filter(LevelFilter::DEBUG),
     )
     .init();
 
@@ -43,8 +46,8 @@ async fn main() -> Result {
   let app = Router::new()
     .route("/", get(home))
     .nest_service("/static", ServeDir::new("static"))
-    .with_state(state);
-  let listener = TcpListener::bind("0.0.0.0:3000").await?;
+    .with_state(state.clone());
+  let listener = TcpListener::bind(state.config.listen).await?;
   info!("listening on http://{}", listener.local_addr()?);
   axum::serve(listener, app).await?;
   Ok(())
@@ -54,6 +57,7 @@ async fn main() -> Result {
 struct Config {
   stats_dir: PathBuf,
   refresh_interval: u64,
+  listen: SocketAddr,
   players: Vec<String>,
 }
 
@@ -64,19 +68,17 @@ impl Config {
 }
 
 struct AppState {
-  stats_dir: PathBuf,
-  refresh_interval: Duration,
+  config: Config,
   players: RwLock<HashMap<String, Option<Player>>>,
 }
 
 impl AppState {
-  fn from(conf: Config) -> Self {
+  fn from(config: Config) -> Self {
     Self {
-      stats_dir: conf.stats_dir,
-      refresh_interval: Duration::from_secs(conf.refresh_interval),
       players: RwLock::new(HashMap::from_iter(
-        conf.players.into_iter().map(|u| (u, None)),
+        config.players.clone().into_iter().map(|u| (u, None)),
       )),
+      config,
     }
   }
 }
@@ -117,15 +119,16 @@ impl StatFile {
 }
 
 async fn process_stats(state: Arc<AppState>) {
-  let mut interval = interval(state.refresh_interval);
+  let mut interval = interval(Duration::from_secs(state.config.refresh_interval));
+  let client = Client::new();
   loop {
     interval.tick().await;
-    let mut players = state.players.read().await.clone();
     async {
+      let mut players = state.players.read().await.clone();
       for (u, p) in players.iter_mut() {
         let username = match p {
           Some(p) => p.username.clone(),
-          None => match get_profile(u).await {
+          None => match get_profile(&client, u).await {
             Ok(p) => p.name,
             Err(e) => {
               error!("mojang api error: {}", e);
@@ -134,7 +137,7 @@ async fn process_stats(state: Arc<AppState>) {
           },
         };
 
-        let filename = state.stats_dir.join(u).with_extension("json");
+        let filename = state.config.stats_dir.join(u).with_extension("json");
         match File::open(&filename) {
           Ok(f) => match serde_json::from_reader::<_, StatFile>(f) {
             Ok(data) => {
@@ -142,13 +145,13 @@ async fn process_stats(state: Arc<AppState>) {
                 username,
                 mined: data.sum("minecraft:mined"),
                 distance: format!(
-                  "{:.2}",
+                  "{:.2}km",
                   data
                     .stats
                     .get("minecraft:custom")
                     .map(|h| {
                       h.iter()
-                        .filter(|x| x.0.ends_with("one_cm"))
+                        .filter(|x| x.0.ends_with("cm"))
                         .map(|x| x.1)
                         .sum::<u64>()
                     })
@@ -167,10 +170,10 @@ async fn process_stats(state: Arc<AppState>) {
           Err(e) => error!("could not open {:?}: {}", filename, e),
         }
       }
+      *state.players.write().await = players;
     }
     .instrument(info_span!("refreshing stats"))
     .await;
-    *state.players.write().await = players;
   }
 }
 
@@ -179,9 +182,11 @@ struct Profile {
   name: String,
 }
 
-async fn get_profile(uuid: &str) -> Result<Profile> {
+async fn get_profile(client: &Client, uuid: &str) -> Result<Profile> {
   Ok(
-    reqwest::get(format!("https://api.mojang.com/user/profile/{}", uuid))
+    client
+      .get(format!("https://api.mojang.com/user/profile/{}", uuid))
+      .send()
       .await?
       .json::<Profile>()
       .await?,
@@ -195,7 +200,7 @@ struct Home {
   ver: &'static str,
 }
 
-async fn home(State(state): State<Arc<AppState>>) -> Home {
+async fn home<'a>(State(state): State<Arc<AppState>>) -> Home {
   Home {
     players: state
       .players
