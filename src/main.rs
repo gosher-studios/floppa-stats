@@ -25,7 +25,7 @@ pub type Result<T = (), E = Box<dyn std::error::Error>> = std::result::Result<T,
 #[tokio::main]
 async fn main() -> Result {
   tracing_subscriber::registry()
-    .with(console_subscriber::spawn())
+    //.with(console_subscriber::spawn())
     .with(
       tracing_subscriber::fmt::layer()
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
