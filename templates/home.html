@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -14,31 +14,47 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono&amp;display=swap"
       rel="stylesheet"
     />
-    <link href="https://cdn.jsdelivr.net/gh/eliyantosarage/font-awesome-pro@main/fontawesome-pro-6.5.1-web/css/all.min.css" rel="stylesheet">
   </head>
   <body class="bg-bg text-accent font-mono p-4">
-		<div class="flex items-end space-x-1 w-full pb-2 border-grey border-b">
+    <div class="flex items-end space-x-1 w-full pb-2 border-grey border-b">
       <h1 class="text-white font-display text-6xl flex-1">Floppa Stats</h1>
-      <a class="transition-colors hover:text-white" href="https://github.com/gosher-studios/floppa-stats" target="_blank"><i class="fa-brands fa-github"></i></a>
+      <a
+        class="transition-colors hover:text-white"
+        href="https://github.com/gosher-studios/floppa-stats"
+        target="_blank"
+        ><i class="fa-brands fa-github"></i
+      ></a>
       <p>v{{ ver }}</p>
     </div>
     <div class="flex flex-wrap">
       {% for (uuid, player) in players %}
-        <div class="bg-fg p-2 mt-2 md:mr-2 w-full md:w-72 transition-shadow hover:shadow-xl">
-          <p class="text-white font-bold text-3xl"><img src="https://mc-heads.net/head/{{ uuid }}" class="w-12 mr-2 inline transition-transform hover:scale-110" /><span class="align-middle">{{ player.username }}</span></p>
-          {% call stat("fa-pickaxe", "mined", player.mined) %}
-          {% call stat("fa-route", "distance", player.distance) %}
-          {% call stat("fa-up", "jumps", player.jumps) %}
-          {% call stat("fa-sword", "kills", player.kills) %}
-          {% call stat("fa-hammer", "crafted", player.crafted) %}
-          {% call stat("fa-money-bill-transfer", "trades", player.trades) %}
-          {% call stat("fa-skull", "deaths", player.deaths) %}
-        </div>
+      <div
+        class="bg-fg p-2 mt-2 md:mr-2 w-full md:w-72 transition-shadow hover:shadow-xl"
+      >
+        <p class="text-white font-bold text-3xl">
+          <img
+            src="https://mc-heads.net/head/{{ uuid }}"
+            class="w-12 mr-2 inline transition-transform hover:scale-110"
+          />
+          <span class="align-middle">{{ player.username }}</span>
+        </p>
+        <!-- prettier-ignore -->
+        {% call stat("fa-pickaxe", "mined", player.mined) %}
+        {% call stat("fa-route", "distance", player.distance) %}
+        {% call stat("fa-up", "jumps", player.jumps) %}
+        {% call stat("fa-sword", "kills", player.kills) %}
+        {% call stat("fa-hammer", "crafted", player.crafted) %}
+        {% call stat("fa-money-bill-transfer", "trades", player.trades) %}
+        {% call stat("fa-skull", "deaths", player.deaths) %}
+      </div>
       {% endfor %}
     </div>
-	</body>
+  </body>
 </html>
 
 {% macro stat(icon, label, val) %}
-  <p><i class="fa-solid {{ icon }} w-6"></i>{{ label }}: <span class="text-white float-right">{{ val }}</span></p>
+<p>
+  <i class="fa-solid {{ icon }} w-6"></i>{{ label }}:
+  <span class="text-white float-right">{{ val }}</span>
+</p>
 {% endmacro %}
