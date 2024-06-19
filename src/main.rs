@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::path::PathBuf;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
@@ -25,7 +25,7 @@ pub type Result<T = (), E = Box<dyn std::error::Error>> = std::result::Result<T,
 #[tokio::main]
 async fn main() -> Result {
   tracing_subscriber::registry()
-    .with(console_subscriber::spawn())
+    //.with(console_subscriber::spawn())
     .with(
       tracing_subscriber::fmt::layer()
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
@@ -196,7 +196,7 @@ async fn get_profile(client: &Client, uuid: &str) -> Result<Profile> {
 #[derive(Template)]
 #[template(path = "home.html")]
 struct Home {
-  players: HashMap<String, Player>,
+  players: BTreeMap<String, Player>,
   ver: &'static str,
 }
 
