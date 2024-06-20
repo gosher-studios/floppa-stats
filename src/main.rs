@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::path::PathBuf;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
+use std::cmp::Ordering;
 use std::fs::{self, File};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
@@ -8,7 +9,7 @@ use tokio::time::{interval, Duration};
 use tokio::sync::RwLock;
 use axum::Router;
 use axum::routing::get;
-use axum::extract::State;
+use axum::extract::{State, Query};
 use askama::Template;
 use tower_http::services::ServeDir;
 use reqwest::Client;
@@ -86,13 +87,30 @@ impl AppState {
 #[derive(Clone, Debug)]
 struct Player {
   username: String,
+  playtime: f32,
   mined: u64,
-  distance: String,
+  distance: f32,
   jumps: u64,
   kills: u64,
   crafted: u64,
   trades: u64,
   deaths: u64,
+}
+
+impl Player {
+  fn cmp(&self, other: &Player, key: &str) -> Ordering {
+    match key {
+      "playtime" => other.playtime.total_cmp(&self.playtime),
+      "mined" => other.mined.cmp(&self.mined),
+      "distance" => other.distance.total_cmp(&self.distance),
+      "jumps" => other.jumps.cmp(&self.jumps),
+      "kills" => other.kills.cmp(&self.kills),
+      "crafted" => other.crafted.cmp(&self.crafted),
+      "trades" => other.trades.cmp(&self.trades),
+      "deaths" => other.deaths.cmp(&self.deaths),
+      _ => self.username.cmp(&other.username),
+    }
+  }
 }
 
 #[derive(Deserialize)]
@@ -143,21 +161,19 @@ async fn process_stats(state: Arc<AppState>) {
             Ok(data) => {
               *p = Some(Player {
                 username,
+                playtime: data.custom("minecraft:play_time") as f32 / 72000.0,
                 mined: data.sum("minecraft:mined"),
-                distance: format!(
-                  "{:.2}km",
-                  data
-                    .stats
-                    .get("minecraft:custom")
-                    .map(|h| {
-                      h.iter()
-                        .filter(|x| x.0.ends_with("cm"))
-                        .map(|x| x.1)
-                        .sum::<u64>()
-                    })
-                    .unwrap_or_default() as f32
-                    / 100000.0
-                ),
+                distance: data
+                  .stats
+                  .get("minecraft:custom")
+                  .map(|h| {
+                    h.iter()
+                      .filter(|x| x.0.ends_with("cm"))
+                      .map(|x| x.1)
+                      .sum::<u64>()
+                  })
+                  .unwrap_or_default() as f32
+                  / 100000.0,
                 jumps: data.custom("minecraft:jump"),
                 kills: data.custom("minecraft:mob_kills") + data.custom("minecraft:player_kills"),
                 crafted: data.sum("minecraft:crafted"),
@@ -193,23 +209,33 @@ async fn get_profile(client: &Client, uuid: &str) -> Result<Profile> {
   )
 }
 
+#[derive(Deserialize)]
+struct Params {
+  sort: Option<String>,
+}
+
 #[derive(Template)]
 #[template(path = "home.html")]
 struct Home {
-  players: BTreeMap<String, Player>,
+  players: Vec<(String, Player)>,
+  sort_mode: String,
   ver: &'static str,
 }
 
-async fn home<'a>(State(state): State<Arc<AppState>>) -> Home {
+async fn home<'a>(State(state): State<Arc<AppState>>, Query(params): Query<Params>) -> Home {
+  let sort_mode = params.sort.unwrap_or("default".to_string());
+  let mut players: Vec<_> = state
+    .players
+    .read()
+    .await
+    .clone()
+    .into_iter()
+    .filter_map(|(u, p)| p.map(|p| (u, p)))
+    .collect();
+  players.sort_by(|a, b| a.1.cmp(&b.1, &sort_mode));
   Home {
-    players: state
-      .players
-      .read()
-      .await
-      .clone()
-      .into_iter()
-      .filter_map(|(u, p)| p.map(|p| (u, p)))
-      .collect(),
+    players,
+    sort_mode,
     ver: env!("CARGO_PKG_VERSION"),
   }
 }
